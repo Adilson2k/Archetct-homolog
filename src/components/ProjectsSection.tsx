@@ -7,12 +7,12 @@ import project5 from "@/assets/project-5.jpg";
 import project6 from "@/assets/project-6.jpg";
 
 const projects = [
-  { image: project1, title: "Residência Horizonte", category: "Residencial", year: "2024" },
-  { image: project2, title: "Torre Meridiano", category: "Comercial", year: "2023" },
-  { image: project3, title: "Loft Essência", category: "Interiores", year: "2024" },
-  { image: project4, title: "Museu da Luz", category: "Cultural", year: "2023" },
-  { image: project5, title: "Casa Raízes", category: "Sustentável", year: "2022" },
-  { image: project6, title: "Hotel Brisa", category: "Hospitalidade", year: "2024" },
+  { image: project1, title: "Residência Horizonte", category: "Residencial", year: "2024", demo: "https://example.com/residencia-horizonte" },
+  { image: project2, title: "Torre Meridiano", category: "Comercial", year: "2023", demo: "https://example.com/torre-meridiano" },
+  { image: project3, title: "Loft Essência", category: "Interiores", year: "2024", demo: "https://example.com/loft-essencia" },
+  { image: project4, title: "Museu da Luz", category: "Cultural", year: "2023", demo: "https://example.com/museu-da-luz" },
+  { image: project5, title: "Casa Raízes", category: "Sustentável", year: "2022", demo: "https://example.com/casa-raizes" },
+  { image: project6, title: "Hotel Brisa", category: "Hospitalidade", year: "2024", demo: "https://example.com/hotel-brisa" },
 ];
 
 const ProjectCard = ({ project, index }: { project: typeof projects[0]; index: number }) => (
@@ -30,7 +30,17 @@ const ProjectCard = ({ project, index }: { project: typeof projects[0]; index: n
         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
         loading="lazy"
       />
-      <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/20 transition-all duration-500" />
+      <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/20 transition-all duration-500 flex items-center justify-center">
+        <a
+          href={project.demo}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-3 group-hover:translate-y-0 font-body text-sm tracking-widest uppercase px-6 py-3 border border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-foreground"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Live Demo
+        </a>
+      </div>
     </div>
     <div className="mt-4 flex items-baseline justify-between">
       <div>
