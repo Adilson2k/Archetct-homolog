@@ -17,7 +17,7 @@ const AboutSection = () => {
             </h2>
             <div className="space-y-5 font-body text-muted-foreground leading-relaxed">
               <p>
-                Com mais de 15 anos de experiência, o estúdio ARCOS desenvolve projetos que
+                Com mais de 15 anos de experiência, Almedino Mabiel desenvolve projetos que
                 dialogam com o contexto, a luz e as pessoas. Cada obra é uma resposta singular
                 às necessidades do lugar e de quem o habita.
               </p>
