@@ -17,15 +17,15 @@ const ContactSection = () => {
           <div className="space-y-6 font-body text-muted-foreground">
             <div>
               <p className="text-sm tracking-widest uppercase text-foreground mb-1">Email</p>
-              <p>contato@arcosarquitetura.com</p>
+              <p>almedinomabiel@gmail.com</p>
             </div>
             <div>
               <p className="text-sm tracking-widest uppercase text-foreground mb-1">Telefone</p>
-              <p>+55 (11) 3456-7890</p>
+              <p>+244 941 949 095</p>
             </div>
             <div>
-              <p className="text-sm tracking-widest uppercase text-foreground mb-1">Endereço</p>
-              <p>Rua Oscar Freire, 1200<br />São Paulo, SP — Brasil</p>
+              <p className="text-sm tracking-widest uppercase text-foreground mb-1">Localização</p>
+              <p>Angola</p>
             </div>
           </div>
         </motion.div>

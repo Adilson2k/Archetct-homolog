@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import portrait from "@/assets/almedino-portrait.jpg";
 
 const AboutSection = () => {
   return (
@@ -17,14 +18,16 @@ const AboutSection = () => {
             </h2>
             <div className="space-y-5 font-body text-muted-foreground leading-relaxed">
               <p>
-                Com mais de 15 anos de experiência, Almedino Mabiel desenvolve projetos que
-                dialogam com o contexto, a luz e as pessoas. Cada obra é uma resposta singular
-                às necessidades do lugar e de quem o habita.
+                Almedino Mabiel é um jovem arquitecto angolano, actualmente estudante de
+                Arquitectura, com uma visão ousada e contemporânea. Apesar de ainda estar em
+                formação, já acumula projectos notáveis que revelam maturidade técnica e uma
+                sensibilidade estética invulgar.
               </p>
               <p>
-                Nossa abordagem combina rigor técnico com sensibilidade estética, resultando
-                em espaços que transcendem a mera funcionalidade para se tornarem experiências
-                memoráveis.
+                Apaixonado por design funcional e sustentável, Almedino acredita que a
+                arquitectura tem o poder de transformar comunidades. Os seus projectos
+                combinam influências africanas com linhas modernas, criando espaços únicos
+                que contam histórias e conectam pessoas.
               </p>
             </div>
           </motion.div>
@@ -34,19 +37,19 @@ const AboutSection = () => {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="grid grid-cols-2 gap-8"
+            className="flex justify-center"
           >
-            {[
-              { number: "120+", label: "Projetos Realizados" },
-              { number: "15", label: "Anos de Experiência" },
-              { number: "8", label: "Prêmios Nacionais" },
-              { number: "3", label: "Países" },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center lg:text-left">
-                <p className="font-display text-4xl md:text-5xl text-accent">{stat.number}</p>
-                <p className="font-body text-sm text-muted-foreground mt-2">{stat.label}</p>
+            <div className="relative">
+              <img
+                src={portrait}
+                alt="Almedino Mabiel - Arquitecto"
+                className="w-80 md:w-96 object-cover aspect-[3/4] grayscale hover:grayscale-0 transition-all duration-700"
+              />
+              <div className="absolute -bottom-6 -left-6 bg-accent px-6 py-4">
+                <p className="font-display text-lg text-accent-foreground">Almedino Mabiel</p>
+                <p className="font-body text-xs text-accent-foreground/80 tracking-widest uppercase">Arquitecto · Angola</p>
               </div>
-            ))}
+            </div>
           </motion.div>
         </div>
       </div>
