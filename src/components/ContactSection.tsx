@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Instagram, Linkedin, Mail, Phone, MapPin } from "lucide-react";
 
 const ContactSection = () => {
   return (
@@ -15,18 +16,36 @@ const ContactSection = () => {
             Vamos construir <span className="italic">juntos</span>
           </h2>
           <div className="space-y-6 font-body text-muted-foreground">
-            <div>
-              <p className="text-sm tracking-widest uppercase text-foreground mb-1">Email</p>
-              <p>almedinomabiel@gmail.com</p>
+            <div className="flex items-center gap-3">
+              <Mail size={18} className="text-accent" />
+              <div>
+                <p className="text-sm tracking-widest uppercase text-foreground mb-1">Email</p>
+                <a href="mailto:almedinomabiel@gmail.com" className="hover:text-accent transition-colors">almedinomabiel@gmail.com</a>
+              </div>
             </div>
-            <div>
-              <p className="text-sm tracking-widest uppercase text-foreground mb-1">Telefone</p>
-              <p>+244 941 949 095</p>
+            <div className="flex items-center gap-3">
+              <Phone size={18} className="text-accent" />
+              <div>
+                <p className="text-sm tracking-widest uppercase text-foreground mb-1">Telefone</p>
+                <a href="tel:+244941949095" className="hover:text-accent transition-colors">+244 941 949 095</a>
+              </div>
             </div>
-            <div>
-              <p className="text-sm tracking-widest uppercase text-foreground mb-1">Localização</p>
-              <p>Angola</p>
+            <div className="flex items-center gap-3">
+              <MapPin size={18} className="text-accent" />
+              <div>
+                <p className="text-sm tracking-widest uppercase text-foreground mb-1">Localização</p>
+                <p>Angola</p>
+              </div>
             </div>
+          </div>
+
+          <div className="flex gap-4 mt-8">
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="p-3 border border-border text-muted-foreground hover:text-accent hover:border-accent transition-colors">
+              <Instagram size={20} />
+            </a>
+            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="p-3 border border-border text-muted-foreground hover:text-accent hover:border-accent transition-colors">
+              <Linkedin size={20} />
+            </a>
           </div>
         </motion.div>
 
