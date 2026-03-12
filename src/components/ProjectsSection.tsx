@@ -5,14 +5,18 @@ import project3 from "@/assets/project-3.jpg";
 import project4 from "@/assets/project-4.jpg";
 import project5 from "@/assets/project-5.jpg";
 import project6 from "@/assets/project-6.jpg";
+import project7 from "@/assets/project-7.jpg";
+import project8 from "@/assets/project-8.jpg";
 
 const projects = [
-  { image: project1, title: "Residência Horizonte", category: "Residencial", year: "2024", demo: "https://example.com/residencia-horizonte" },
-  { image: project2, title: "Torre Meridiano", category: "Comercial", year: "2023", demo: "https://example.com/torre-meridiano" },
-  { image: project3, title: "Loft Essência", category: "Interiores", year: "2024", demo: "https://example.com/loft-essencia" },
-  { image: project4, title: "Museu da Luz", category: "Cultural", year: "2023", demo: "https://example.com/museu-da-luz" },
-  { image: project5, title: "Casa Raízes", category: "Sustentável", year: "2022", demo: "https://example.com/casa-raizes" },
-  { image: project6, title: "Hotel Brisa", category: "Hospitalidade", year: "2024", demo: "https://example.com/hotel-brisa" },
+  { image: project1, title: "Sakura Garden", category: "Comercial", year: "2025", demo: "https://example.com/sakura-garden" },
+  { image: project2, title: "Escritório Moderno", category: "Interiores", year: "2025", demo: "https://example.com/escritorio-moderno" },
+  { image: project3, title: "Residência Iluminada", category: "Residencial", year: "2024", demo: "https://example.com/residencia-iluminada" },
+  { image: project4, title: "Sakura Garden — Vista Aérea", category: "Comercial", year: "2025", demo: "https://example.com/sakura-garden-aerea" },
+  { image: project5, title: "Complexo Multiuso", category: "Comercial", year: "2024", demo: "https://example.com/complexo-multiuso" },
+  { image: project6, title: "Lounge & Piscina", category: "Hospitalidade", year: "2024", demo: "https://example.com/lounge-piscina" },
+  { image: project7, title: "Residência Urbana", category: "Residencial", year: "2025", demo: "https://example.com/residencia-urbana" },
+  { image: project8, title: "Suite Contemporânea", category: "Interiores", year: "2025", demo: "https://example.com/suite-contemporanea" },
 ];
 
 const ProjectCard = ({ project, index }: { project: typeof projects[0]; index: number }) => (
@@ -65,7 +69,7 @@ const ProjectsSection = () => {
         <p className="font-body text-sm tracking-[0.3em] uppercase text-accent mb-3">Portfólio</p>
         <h2 className="font-display text-4xl md:text-5xl text-foreground">Projetos Selecionados</h2>
       </motion.div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 md:gap-10">
         {projects.map((project, i) => (
           <ProjectCard key={project.title} project={project} index={i} />
         ))}
