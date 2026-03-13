@@ -1,7 +1,10 @@
 import { motion } from "framer-motion";
 import portrait from "@/assets/almedino-portrait.jpg";
+import { useAdmin } from "@/contexts/AdminContext";
 
 const AboutSection = () => {
+  const { profile } = useAdmin();
+
   return (
     <section id="sobre" className="py-24 md:py-32 bg-secondary">
       <div className="max-w-7xl mx-auto px-6 md:px-12">
@@ -17,18 +20,8 @@ const AboutSection = () => {
               Criando espaços que <span className="italic">inspiram</span>
             </h2>
             <div className="space-y-5 font-body text-muted-foreground leading-relaxed">
-              <p>
-                Almedino Mabiel é um jovem arquitecto angolano, actualmente estudante de
-                Arquitectura, com uma visão ousada e contemporânea. Apesar de ainda estar em
-                formação, já acumula projectos notáveis que revelam maturidade técnica e uma
-                sensibilidade estética invulgar.
-              </p>
-              <p>
-                Apaixonado por design funcional e sustentável, Almedino acredita que a
-                arquitectura tem o poder de transformar comunidades. Os seus projectos
-                combinam influências africanas com linhas modernas, criando espaços únicos
-                que contam histórias e conectam pessoas.
-              </p>
+              <p>{profile.bio1}</p>
+              <p>{profile.bio2}</p>
             </div>
           </motion.div>
 
@@ -42,12 +35,12 @@ const AboutSection = () => {
             <div className="relative">
               <img
                 src={portrait}
-                alt="Almedino Mabiel - Arquitecto"
+                alt={`${profile.name} - Arquitecto`}
                 className="w-80 md:w-96 object-cover aspect-[3/4] grayscale hover:grayscale-0 transition-all duration-700"
               />
               <div className="absolute -bottom-6 -left-6 bg-accent px-6 py-4">
-                <p className="font-display text-lg text-accent-foreground">Almedino Mabiel</p>
-                <p className="font-body text-xs text-accent-foreground/80 tracking-widest uppercase">Arquitecto · Angola</p>
+                <p className="font-display text-lg text-accent-foreground">{profile.name}</p>
+                <p className="font-body text-xs text-accent-foreground/80 tracking-widest uppercase">{profile.title}</p>
               </div>
             </div>
           </motion.div>

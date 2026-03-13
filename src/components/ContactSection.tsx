@@ -1,7 +1,10 @@
 import { motion } from "framer-motion";
 import { Instagram, Linkedin, Mail, Phone, MapPin } from "lucide-react";
+import { useAdmin } from "@/contexts/AdminContext";
 
 const ContactSection = () => {
+  const { profile } = useAdmin();
+
   return (
     <section id="contato" className="py-24 md:py-32 max-w-7xl mx-auto px-6 md:px-12">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
@@ -20,30 +23,30 @@ const ContactSection = () => {
               <Mail size={18} className="text-accent" />
               <div>
                 <p className="text-sm tracking-widest uppercase text-foreground mb-1">Email</p>
-                <a href="mailto:almedinomabiel@gmail.com" className="hover:text-accent transition-colors">almedinomabiel@gmail.com</a>
+                <a href={`mailto:${profile.email}`} className="hover:text-accent transition-colors">{profile.email}</a>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Phone size={18} className="text-accent" />
               <div>
                 <p className="text-sm tracking-widest uppercase text-foreground mb-1">Telefone</p>
-                <a href="tel:+244941949095" className="hover:text-accent transition-colors">+244 941 949 095</a>
+                <a href={`tel:${profile.phone.replace(/\s/g, "")}`} className="hover:text-accent transition-colors">{profile.phone}</a>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <MapPin size={18} className="text-accent" />
               <div>
                 <p className="text-sm tracking-widest uppercase text-foreground mb-1">Localização</p>
-                <p>Angola</p>
+                <p>{profile.location}</p>
               </div>
             </div>
           </div>
 
           <div className="flex gap-4 mt-8">
-            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="p-3 border border-border text-muted-foreground hover:text-accent hover:border-accent transition-colors">
+            <a href={profile.instagram} target="_blank" rel="noopener noreferrer" className="p-3 border border-border text-muted-foreground hover:text-accent hover:border-accent transition-colors">
               <Instagram size={20} />
             </a>
-            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="p-3 border border-border text-muted-foreground hover:text-accent hover:border-accent transition-colors">
+            <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" className="p-3 border border-border text-muted-foreground hover:text-accent hover:border-accent transition-colors">
               <Linkedin size={20} />
             </a>
           </div>

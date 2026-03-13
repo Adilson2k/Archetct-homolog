@@ -1,25 +1,7 @@
 import { motion } from "framer-motion";
-import project1 from "@/assets/project-1.jpg";
-import project2 from "@/assets/project-2.jpg";
-import project3 from "@/assets/project-3.jpg";
-import project4 from "@/assets/project-4.jpg";
-import project5 from "@/assets/project-5.jpg";
-import project6 from "@/assets/project-6.jpg";
-import project7 from "@/assets/project-7.jpg";
-import project8 from "@/assets/project-8.jpg";
+import { useAdmin } from "@/contexts/AdminContext";
 
-const projects = [
-  { image: project1, title: "Sakura Garden", category: "Comercial", year: "2025", demo: "https://example.com/sakura-garden" },
-  { image: project2, title: "Escritório Moderno", category: "Interiores", year: "2025", demo: "https://example.com/escritorio-moderno" },
-  { image: project3, title: "Residência Iluminada", category: "Residencial", year: "2024", demo: "https://example.com/residencia-iluminada" },
-  { image: project4, title: "Sakura Garden — Vista Aérea", category: "Comercial", year: "2025", demo: "https://example.com/sakura-garden-aerea" },
-  { image: project5, title: "Complexo Multiuso", category: "Comercial", year: "2024", demo: "https://example.com/complexo-multiuso" },
-  { image: project6, title: "Lounge & Piscina", category: "Hospitalidade", year: "2024", demo: "https://example.com/lounge-piscina" },
-  { image: project7, title: "Residência Urbana", category: "Residencial", year: "2025", demo: "https://example.com/residencia-urbana" },
-  { image: project8, title: "Suite Contemporânea", category: "Interiores", year: "2025", demo: "https://example.com/suite-contemporanea" },
-];
-
-const ProjectCard = ({ project, index }: { project: typeof projects[0]; index: number }) => (
+const ProjectCard = ({ project, index }: { project: { image: string; title: string; category: string; year: string; demo: string }; index: number }) => (
   <motion.div
     initial={{ opacity: 0, y: 40 }}
     whileInView={{ opacity: 1, y: 0 }}
@@ -57,6 +39,8 @@ const ProjectCard = ({ project, index }: { project: typeof projects[0]; index: n
 );
 
 const ProjectsSection = () => {
+  const { projects } = useAdmin();
+
   return (
     <section id="projetos" className="py-24 md:py-32 max-w-7xl mx-auto px-6 md:px-12">
       <motion.div
@@ -71,7 +55,7 @@ const ProjectsSection = () => {
       </motion.div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 md:gap-10">
         {projects.map((project, i) => (
-          <ProjectCard key={project.title} project={project} index={i} />
+          <ProjectCard key={project.id} project={project} index={i} />
         ))}
       </div>
     </section>
