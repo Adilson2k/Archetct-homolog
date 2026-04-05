@@ -122,7 +122,7 @@ const AdminProjects = () => {
             onMouseEnter={(e) => { e.currentTarget.style.background = "hsl(220 15% 12%)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
-            <img src={project.image} alt={project.title} className="w-14 h-14 rounded-lg object-cover ring-1" style={{ ringColor: "hsl(220 12% 18%)" }} />
+            <img src={project.image} alt={project.title} className="w-14 h-14 rounded-lg object-cover border" style={{ borderColor: "hsl(220 12% 18%)" }} />
             <div className="flex-1 min-w-0">
               <p className="font-body text-sm font-medium truncate" style={{ color: "hsl(40 15% 90%)" }}>{project.title}</p>
               <div className="flex items-center gap-2 mt-0.5">

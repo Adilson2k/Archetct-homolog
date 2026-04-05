@@ -73,7 +73,7 @@ const AdminProfile = () => {
               onChange={(e) => setForm({ ...form, bio1: e.target.value })}
               rows={4}
               className="w-full rounded-lg border px-3 py-2.5 font-body text-sm focus:outline-none focus:ring-2 resize-none"
-              style={{ ...inputStyle, ringColor: "hsl(38 60% 52% / 0.3)" }}
+              style={inputStyle}
             />
           </div>
           <div>
@@ -83,7 +83,7 @@ const AdminProfile = () => {
               onChange={(e) => setForm({ ...form, bio2: e.target.value })}
               rows={4}
               className="w-full rounded-lg border px-3 py-2.5 font-body text-sm focus:outline-none focus:ring-2 resize-none"
-              style={{ ...inputStyle, ringColor: "hsl(38 60% 52% / 0.3)" }}
+              style={inputStyle}
             />
           </div>
         </div>
