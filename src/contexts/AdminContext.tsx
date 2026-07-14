@@ -1,20 +1,30 @@
 import { createContext, useContext, useState, ReactNode } from "react";
-import project1 from "@/assets/project-1.jpg";
 import project2 from "@/assets/project-2.jpg";
 import project3 from "@/assets/project-3.jpg";
-import project4 from "@/assets/project-4.jpg";
 import project5 from "@/assets/project-5.jpg";
 import project6 from "@/assets/project-6.jpg";
 import project7 from "@/assets/project-7.jpg";
 import project8 from "@/assets/project-8.jpg";
+import lavanderia1 from "@/assets/lavanderia-1.jpg.asset.json";
+import lavanderia2 from "@/assets/lavanderia-2.jpg.asset.json";
+import lavanderia3 from "@/assets/lavanderia-3.jpg.asset.json";
+import residenciaAmarela from "@/assets/residencia-amarela.jpg.asset.json";
+import residenciaVista from "@/assets/residencia-vista.jpg.asset.json";
+import escritorioInterior from "@/assets/escritorio-interior.jpg.asset.json";
+
+export const CATEGORIES = ["Residencial", "Comercial", "Interiores", "Institucional", "Hospitalidade", "Urbanismo"] as const;
+export type Category = typeof CATEGORIES[number];
 
 export interface Project {
   id: string;
+  slug: string;
   image: string;
+  gallery: string[];
   title: string;
-  category: string;
+  category: Category | string;
   year: string;
-  demo: string;
+  description: string;
+  location?: string;
 }
 
 export interface ProfileInfo {
@@ -41,15 +51,97 @@ interface AdminContextType {
   updateProfile: (info: Partial<ProfileInfo>) => void;
 }
 
+const slugify = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
 const defaultProjects: Project[] = [
-  { id: "1", image: project1, title: "Sakura Garden", category: "Comercial", year: "2025", demo: "https://example.com/sakura-garden" },
-  { id: "2", image: project2, title: "Escritório Moderno", category: "Interiores", year: "2025", demo: "https://example.com/escritorio-moderno" },
-  { id: "3", image: project3, title: "Residência Iluminada", category: "Residencial", year: "2024", demo: "https://example.com/residencia-iluminada" },
-  { id: "4", image: project4, title: "Sakura Garden — Vista Aérea", category: "Comercial", year: "2025", demo: "https://example.com/sakura-garden-aerea" },
-  { id: "5", image: project5, title: "Complexo Multiuso", category: "Comercial", year: "2024", demo: "https://example.com/complexo-multiuso" },
-  { id: "6", image: project6, title: "Lounge & Piscina", category: "Hospitalidade", year: "2024", demo: "https://example.com/lounge-piscina" },
-  { id: "7", image: project7, title: "Residência Urbana", category: "Residencial", year: "2025", demo: "https://example.com/residencia-urbana" },
-  { id: "8", image: project8, title: "Suite Contemporânea", category: "Interiores", year: "2025", demo: "https://example.com/suite-contemporanea" },
+  {
+    id: "1",
+    slug: "lavanderia-militar",
+    image: lavanderia1.url,
+    gallery: [lavanderia1.url, lavanderia2.url, lavanderia3.url],
+    title: "Lavanderia Militar",
+    category: "Institucional",
+    year: "2025",
+    description: "Projeto de uma lavanderia institucional destinada a instalações militares em Angola. A estrutura combina painéis vermelhos característicos com uma cobertura ampla que garante ventilação natural e proteção solar. O interior foi concebido para acomodar múltiplos postos de trabalho em bancadas de concreto polido, priorizando funcionalidade, higiene e durabilidade.",
+    location: "Angola",
+  },
+  {
+    id: "2",
+    slug: "residencia-amarela",
+    image: residenciaAmarela.url,
+    gallery: [residenciaAmarela.url, residenciaVista.url],
+    title: "Residência Amarela",
+    category: "Residencial",
+    year: "2025",
+    description: "Residência de dois pavimentos com fachada contemporânea marcada por um volume amarelo em destaque, muro em pedra natural com iluminação embutida e portões em ripados de madeira e metal. O projeto explora o contraste entre materiais tradicionais e linhas modernas, criando uma presença urbana marcante ao entardecer.",
+    location: "Angola",
+  },
+  {
+    id: "3",
+    slug: "escritorio-moderno",
+    image: escritorioInterior.url,
+    gallery: [escritorioInterior.url, project2],
+    title: "Escritório Moderno",
+    category: "Interiores",
+    year: "2025",
+    description: "Interior de escritório corporativo com estética contemporânea, piso em mármore, painéis ripados em madeira natural e iluminação linear suspensa. Um ambiente que equilibra produtividade e conforto, com áreas de trabalho colaborativo e um lounge acolhedor para pausas.",
+    location: "Luanda",
+  },
+  {
+    id: "4",
+    slug: "residencia-iluminada",
+    image: project3,
+    gallery: [project3],
+    title: "Residência Iluminada",
+    category: "Residencial",
+    year: "2024",
+    description: "Residência unifamiliar com foco em iluminação natural. Grandes vãos e pé-direito duplo criam ambientes generosos e conectados ao exterior.",
+    location: "Angola",
+  },
+  {
+    id: "5",
+    slug: "complexo-multiuso",
+    image: project5,
+    gallery: [project5],
+    title: "Complexo Multiuso",
+    category: "Comercial",
+    year: "2024",
+    description: "Complexo comercial multiuso com fachada moderna e integração de espaços comerciais e de lazer.",
+    location: "Angola",
+  },
+  {
+    id: "6",
+    slug: "lounge-piscina",
+    image: project6,
+    gallery: [project6],
+    title: "Lounge & Piscina",
+    category: "Hospitalidade",
+    year: "2024",
+    description: "Área de lounge com piscina para empreendimento de hospitalidade, com deck em madeira e mobiliário integrado.",
+    location: "Angola",
+  },
+  {
+    id: "7",
+    slug: "residencia-urbana",
+    image: project7,
+    gallery: [project7],
+    title: "Residência Urbana",
+    category: "Residencial",
+    year: "2025",
+    description: "Residência urbana com linhas limpas e materialidade contemporânea, priorizando privacidade e ventilação cruzada.",
+    location: "Angola",
+  },
+  {
+    id: "8",
+    slug: "suite-contemporanea",
+    image: project8,
+    gallery: [project8],
+    title: "Suite Contemporânea",
+    category: "Interiores",
+    year: "2025",
+    description: "Design de interior para suite master com paleta neutra e detalhes em madeira.",
+    location: "Angola",
+  },
 ];
 
 const defaultProfile: ProfileInfo = {
@@ -88,11 +180,14 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => setIsAuthenticated(false);
 
   const addProject = (project: Omit<Project, "id">) => {
-    setProjects((prev) => [...prev, { ...project, id: Date.now().toString() }]);
+    const slug = project.slug || slugify(project.title || Date.now().toString());
+    setProjects((prev) => [...prev, { ...project, slug, id: Date.now().toString() }]);
   };
 
   const updateProject = (id: string, data: Partial<Project>) => {
-    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...data } : p)));
+    setProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...data, slug: data.slug || (data.title ? slugify(data.title) : p.slug) } : p))
+    );
   };
 
   const deleteProject = (id: string) => {
