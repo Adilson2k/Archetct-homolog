@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { useAdmin, Project } from "@/contexts/AdminContext";
+import { useAdmin, Project, CATEGORIES } from "@/contexts/AdminContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, X, Save, ExternalLink, Image } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Save, ExternalLink } from "lucide-react";
 
-const categories = ["Residencial", "Comercial", "Interiores", "Hospitalidade", "Institucional", "Urbanismo"];
-
-const emptyProject = { title: "", category: "", year: "", demo: "", image: "" };
+const emptyProject = { title: "", category: "", year: "", image: "", description: "", location: "", gallery: "" };
 
 const AdminProjects = () => {
   const { projects, addProject, updateProject, deleteProject } = useAdmin();
@@ -16,12 +14,30 @@ const AdminProjects = () => {
   const [form, setForm] = useState(emptyProject);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  const parseGallery = (str: string, mainImage: string) => {
+    const list = str.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (list.length === 0 && mainImage) return [mainImage];
+    return list;
+  };
+
   const handleSave = () => {
+    const image = form.image || "/placeholder.svg";
+    const gallery = parseGallery(form.gallery, image);
+    const payload = {
+      title: form.title,
+      category: form.category,
+      year: form.year,
+      image,
+      description: form.description,
+      location: form.location,
+      gallery,
+      slug: "",
+    };
     if (editing) {
-      updateProject(editing, form);
+      updateProject(editing, payload);
       setEditing(null);
     } else if (adding) {
-      addProject({ ...form, image: form.image || "/placeholder.svg" });
+      addProject(payload);
       setAdding(false);
     }
     setForm(emptyProject);
@@ -30,7 +46,15 @@ const AdminProjects = () => {
   const startEdit = (project: Project) => {
     setEditing(project.id);
     setAdding(false);
-    setForm({ title: project.title, category: project.category, year: project.year, demo: project.demo, image: project.image });
+    setForm({
+      title: project.title,
+      category: project.category,
+      year: project.year,
+      image: project.image,
+      description: project.description,
+      location: project.location || "",
+      gallery: (project.gallery || []).join("\n"),
+    });
   };
 
   const cancel = () => {
@@ -45,9 +69,7 @@ const AdminProjects = () => {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <p className="font-body text-sm" style={{ color: "hsl(220 8% 50%)" }}>{projects.length} projetos no portfólio</p>
-        </div>
+        <p className="font-body text-sm" style={{ color: "hsl(220 8% 50%)" }}>{projects.length} projetos no portfólio</p>
         {!adding && !editing && (
           <Button
             onClick={() => { setAdding(true); setForm(emptyProject); }}
@@ -80,7 +102,7 @@ const AdminProjects = () => {
                   <SelectValue placeholder="Selecionar categoria" />
                 </SelectTrigger>
                 <SelectContent style={{ background: "hsl(220 15% 12%)", borderColor: "hsl(220 12% 18%)" }}>
-                  {categories.map((cat) => (
+                  {CATEGORIES.map((cat) => (
                     <SelectItem key={cat} value={cat} className="font-body text-sm cursor-pointer" style={{ color: "hsl(40 15% 85%)" }}>
                       {cat}
                     </SelectItem>
@@ -93,12 +115,33 @@ const AdminProjects = () => {
               <Input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} className="h-10 border font-body" style={inputStyle} />
             </div>
             <div>
-              <label className="font-body text-xs uppercase tracking-[0.12em] mb-1.5 block" style={labelStyle}>Link Demo</label>
-              <Input value={form.demo} onChange={(e) => setForm({ ...form, demo: e.target.value })} className="h-10 border font-body" style={inputStyle} />
+              <label className="font-body text-xs uppercase tracking-[0.12em] mb-1.5 block" style={labelStyle}>Localização</label>
+              <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="h-10 border font-body" style={inputStyle} />
             </div>
             <div className="md:col-span-2">
-              <label className="font-body text-xs uppercase tracking-[0.12em] mb-1.5 block" style={labelStyle}>URL da Imagem</label>
+              <label className="font-body text-xs uppercase tracking-[0.12em] mb-1.5 block" style={labelStyle}>Imagem de Capa (URL)</label>
               <Input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} className="h-10 border font-body" style={inputStyle} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="font-body text-xs uppercase tracking-[0.12em] mb-1.5 block" style={labelStyle}>Galeria (uma URL por linha)</label>
+              <textarea
+                value={form.gallery}
+                onChange={(e) => setForm({ ...form, gallery: e.target.value })}
+                rows={3}
+                placeholder="https://.../imagem1.jpg&#10;https://.../imagem2.jpg"
+                className="w-full rounded-md border px-3 py-2 font-body text-sm resize-none focus:outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="font-body text-xs uppercase tracking-[0.12em] mb-1.5 block" style={labelStyle}>Descrição</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                rows={5}
+                className="w-full rounded-md border px-3 py-2 font-body text-sm resize-none focus:outline-none"
+                style={inputStyle}
+              />
             </div>
           </div>
 
@@ -128,17 +171,18 @@ const AdminProjects = () => {
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="font-body text-xs px-2 py-0.5 rounded-full" style={{ background: "hsl(38 60% 52% / 0.1)", color: "hsl(38 60% 58%)" }}>{project.category}</span>
                 <span className="font-body text-xs" style={{ color: "hsl(220 8% 40%)" }}>· {project.year}</span>
+                {project.gallery?.length > 1 && (
+                  <span className="font-body text-xs" style={{ color: "hsl(220 8% 40%)" }}>· {project.gallery.length} fotos</span>
+                )}
               </div>
             </div>
             <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              {project.demo && (
-                <a href={project.demo} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{ color: "hsl(220 8% 50%)" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "hsl(220 12% 16%)"; e.currentTarget.style.color = "hsl(40 15% 85%)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "hsl(220 8% 50%)"; }}
-                >
-                  <ExternalLink size={15} />
-                </a>
-              )}
+              <a href={`/projetos/${project.slug}`} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{ color: "hsl(220 8% 50%)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "hsl(220 12% 16%)"; e.currentTarget.style.color = "hsl(40 15% 85%)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "hsl(220 8% 50%)"; }}
+              >
+                <ExternalLink size={15} />
+              </a>
               <button onClick={() => startEdit(project)} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{ color: "hsl(220 8% 50%)" }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "hsl(220 12% 16%)"; e.currentTarget.style.color = "hsl(40 15% 85%)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "hsl(220 8% 50%)"; }}
