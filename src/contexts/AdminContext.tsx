@@ -5,12 +5,12 @@ import project5 from "@/assets/project-5.jpg";
 import project6 from "@/assets/project-6.jpg";
 import project7 from "@/assets/project-7.jpg";
 import project8 from "@/assets/project-8.jpg";
-import lavanderia1 from "@/assets/lavanderia-1.jpg.asset.json";
-import lavanderia2 from "@/assets/lavanderia-2.jpg.asset.json";
-import lavanderia3 from "@/assets/lavanderia-3.jpg.asset.json";
-import residenciaAmarela from "@/assets/residencia-amarela.jpg.asset.json";
-import residenciaVista from "@/assets/residencia-vista.jpg.asset.json";
-import escritorioInterior from "@/assets/escritorio-interior.jpg.asset.json";
+const lavanderia1 = { url: "/assets/lavanderia-1.jpg" };
+const lavanderia2 = { url: "/assets/lavanderia-2.jpg" };
+const lavanderia3 = { url: "/assets/lavanderia-3.jpg" };
+const residenciaAmarela = { url: "/assets/residencia-amarela.jpg" };
+const residenciaVista = { url: "/assets/residencia-vista.jpg" };
+const escritorioInterior = { url: "/assets/escritorio-interior.jpg" };
 
 export const CATEGORIES = ["Residencial", "Comercial", "Interiores", "Institucional", "Hospitalidade", "Urbanismo"] as const;
 export type Category = typeof CATEGORIES[number];
