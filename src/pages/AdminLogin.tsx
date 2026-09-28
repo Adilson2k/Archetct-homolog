@@ -9,15 +9,17 @@ const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { login } = useAdmin();
+  const { login, firebaseConfigured } = useAdmin();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(email, password)) {
+    if (await login(email, password)) {
       navigate("/admin");
     } else {
-      setError("Credenciais inválidas");
+      setError(firebaseConfigured
+        ? "Credenciais inválidas ou conta diferente do administrador autorizado"
+        : "Firebase não configurado. Configure as variáveis no arquivo .env.local.");
     }
   };
 
@@ -72,9 +74,6 @@ const AdminLogin = () => {
             </Button>
           </form>
 
-          <p className="text-center text-xs mt-6 font-body" style={{ color: "hsl(220 8% 40%)" }}>
-            Demo: admin@almedino.com / admin123
-          </p>
         </div>
       </div>
     </div>

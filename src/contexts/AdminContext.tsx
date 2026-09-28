@@ -1,4 +1,8 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from "firebase/auth";
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, setDoc, writeBatch } from "firebase/firestore";
+import { upload } from "@vercel/blob/client";
+import { firebaseAuth, firebaseConfigured, firestore } from "@/lib/firebase";
 import project2 from "@/assets/project-2.jpg";
 import project3 from "@/assets/project-3.jpg";
 import project5 from "@/assets/project-5.jpg";
@@ -41,17 +45,20 @@ export interface ProfileInfo {
 
 interface AdminContextType {
   isAuthenticated: boolean;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
+  firebaseConfigured: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   projects: Project[];
-  addProject: (project: Omit<Project, "id">) => void;
-  updateProject: (id: string, project: Partial<Project>) => void;
-  deleteProject: (id: string) => void;
+  addProject: (project: Omit<Project, "id">) => Promise<void>;
+  updateProject: (id: string, project: Partial<Project>) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
+  uploadProjectImages: (files: File[]) => Promise<string[]>;
   profile: ProfileInfo;
-  updateProfile: (info: Partial<ProfileInfo>) => void;
+  updateProfile: (info: Partial<ProfileInfo>) => Promise<void>;
 }
 
 const slugify = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+const ADMIN_EMAIL = "almedino.arch@gmail.com";
 
 const defaultProjects: Project[] = [
   {
@@ -169,37 +176,141 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [projects, setProjects] = useState<Project[]>(defaultProjects);
   const [profile, setProfile] = useState<ProfileInfo>(defaultProfile);
 
-  const login = (email: string, password: string) => {
-    if (email === "admin@almedino.com" && password === "admin123") {
-      setIsAuthenticated(true);
-      return true;
+  useEffect(() => {
+    if (!firebaseAuth || !firestore) return;
+
+    return onAuthStateChanged(firebaseAuth, async (user) => {
+      if (!user) {
+        setIsAuthenticated(false);
+        return;
+      }
+
+      try {
+        const token = await user.getIdTokenResult();
+        const isAdmin = user.email?.toLowerCase() === ADMIN_EMAIL && token.claims.email_verified === true;
+        setIsAuthenticated(isAdmin);
+        if (!isAdmin) return;
+        await seedInitialContent(user);
+      } catch (error) {
+        setIsAuthenticated(false);
+        console.error("Unable to initialize portfolio content", error);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!firestore) return;
+
+    const unsubscribeProjects = onSnapshot(collection(firestore, "projects"), (snapshot) => {
+      setProjects(snapshot.docs.map((projectDoc) => ({ ...projectDoc.data(), id: projectDoc.id }) as Project));
+    }, (error) => console.error("Unable to load portfolio projects", error));
+
+    const unsubscribeProfile = onSnapshot(doc(firestore, "site", "profile"), (snapshot) => {
+      setProfile(snapshot.exists() ? { ...defaultProfile, ...snapshot.data() } as ProfileInfo : defaultProfile);
+    }, (error) => console.error("Unable to load portfolio profile", error));
+
+    return () => {
+      unsubscribeProjects();
+      unsubscribeProfile();
+    };
+  }, []);
+
+  const seedInitialContent = async (user: User) => {
+    if (!firestore) return;
+    const token = await user.getIdTokenResult();
+    if (user.email?.toLowerCase() !== ADMIN_EMAIL || token.claims.email_verified !== true) return;
+
+    const [projectSnapshot, profileSnapshot] = await Promise.all([
+      getDocs(collection(firestore, "projects")),
+      getDoc(doc(firestore, "site", "profile")),
+    ]);
+    const batch = writeBatch(firestore);
+    let hasChanges = false;
+
+    if (projectSnapshot.empty) {
+      defaultProjects.forEach((project) => {
+        batch.set(doc(firestore, "projects", project.id), project);
+      });
+      hasChanges = true;
     }
-    return false;
+    if (!profileSnapshot.exists()) {
+      batch.set(doc(firestore, "site", "profile"), defaultProfile);
+      hasChanges = true;
+    }
+    if (hasChanges) await batch.commit();
   };
 
-  const logout = () => setIsAuthenticated(false);
+  const login = async (email: string, password: string) => {
+    if (!firebaseAuth) return false;
+    try {
+      const credential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+      const token = await credential.user.getIdTokenResult();
+      const isAdmin = credential.user.email?.toLowerCase() === ADMIN_EMAIL && token.claims.email_verified === true;
+      if (!isAdmin) {
+        await signOut(firebaseAuth);
+        return false;
+      }
+      setIsAuthenticated(true);
+      await seedInitialContent(credential.user);
+      return true;
+    } catch {
+      setIsAuthenticated(false);
+      await signOut(firebaseAuth);
+      return false;
+    }
+  };
 
-  const addProject = (project: Omit<Project, "id">) => {
+  const logout = async () => {
+    if (firebaseAuth) await signOut(firebaseAuth);
+  };
+
+  const requireFirestore = () => {
+    if (!firestore) throw new Error("Firebase não está configurado.");
+    return firestore;
+  };
+
+  const addProject = async (project: Omit<Project, "id">) => {
     const slug = project.slug || slugify(project.title || Date.now().toString());
-    setProjects((prev) => [...prev, { ...project, slug, id: Date.now().toString() }]);
+    const id = doc(collection(requireFirestore(), "projects")).id;
+    await setDoc(doc(requireFirestore(), "projects", id), { ...project, slug, id });
   };
 
-  const updateProject = (id: string, data: Partial<Project>) => {
-    setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...data, slug: data.slug || (data.title ? slugify(data.title) : p.slug) } : p))
-    );
+  const updateProject = async (id: string, data: Partial<Project>) => {
+    const currentProject = projects.find((project) => project.id === id);
+    const slug = data.slug || (data.title ? slugify(data.title) : currentProject?.slug);
+    await setDoc(doc(requireFirestore(), "projects", id), { ...data, ...(slug ? { slug } : {}), id }, { merge: true });
   };
 
-  const deleteProject = (id: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
+  const deleteProject = async (id: string) => {
+    await deleteDoc(doc(requireFirestore(), "projects", id));
   };
 
-  const updateProfile = (info: Partial<ProfileInfo>) => {
-    setProfile((prev) => ({ ...prev, ...info }));
+  const uploadProjectImages = async (files: File[]) => {
+    const user = firebaseAuth?.currentUser;
+    if (!user || !isAuthenticated || user.email?.toLowerCase() !== ADMIN_EMAIL) {
+      throw new Error("Apenas o administrador autorizado pode enviar imagens.");
+    }
+    const clientPayload = await user.getIdToken();
+
+    const blobs = await Promise.all(files.map((file) => upload(
+      `projects/${crypto.randomUUID()}/${file.name}`,
+      file,
+      {
+        access: "public",
+        handleUploadUrl: "/api/upload",
+        clientPayload,
+      },
+    )));
+
+    return blobs.map((blob) => blob.url);
+  };
+
+  const updateProfile = async (info: Partial<ProfileInfo>) => {
+    await setDoc(doc(requireFirestore(), "site", "profile"), { ...profile, ...info });
   };
 
   return (
-    <AdminContext.Provider value={{ isAuthenticated, login, logout, projects, addProject, updateProject, deleteProject, profile, updateProfile }}>
+    <AdminContext.Provider value={{ isAuthenticated, firebaseConfigured, login, logout, projects, addProject, updateProject, deleteProject, uploadProjectImages, profile, updateProfile }}>
       {children}
     </AdminContext.Provider>
   );

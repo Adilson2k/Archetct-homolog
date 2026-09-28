@@ -1,4 +1,22 @@
-# Welcome to your Lovable project
+# Portfolio de Arquitectura
+
+## Firebase
+
+O portfolio usa Firebase Authentication para o painel e Cloud Firestore para projetos e perfil. Sem configuração Firebase, o site público continua a apresentar o conteúdo de demonstração, mas o painel não aceita autenticação.
+
+Os uploads de imagens usam Vercel Blob. Configure `BLOB_READ_WRITE_TOKEN` nas variáveis do projeto Vercel (Production, Preview e Development, conforme necessário) e localmente no `.env`. A rota `/api/upload` valida o ID token Firebase e permite somente o e-mail verificado `almedino.arch@gmail.com`; aceita JPEG, PNG, WebP, GIF e AVIF até 15 MB. O painel permite enviar múltiplas imagens por projeto e adiciona os links à galeria do projeto.
+
+1. Crie um projeto Firebase, ative Authentication com Email/Password e crie o banco Cloud Firestore.
+2. Copie `.env.example` para `.env.local` e preencha as credenciais do app Web do Firebase.
+3. Publique `firestore.rules` no Firestore Rules.
+4. Em Firebase Authentication, crie apenas o utilizador `almedino.arch@gmail.com` e verifique esse endereço. As regras e a função de upload recusam todos os outros e-mails, mesmo que tenham sido criados no Firebase.
+5. Execute `vercel dev` para testar o painel e os uploads localmente. O comando `npm run dev` inicia apenas o Vite e não serve a função `/api/upload`.
+
+Para provisionar ou corrigir a conta localmente, coloque a senha em `.private/admin-credentials.md` e a service account na raiz do projeto com o nome `*firebase-adminsdk*.json`; depois execute `npm run provision:admin`. O comando cria a conta caso não exista ou atualiza sua senha e marca o e-mail como verificado. Nunca faça commit desses arquivos.
+
+No primeiro login autorizado, projetos e perfil de demonstração são criados no Firestore caso ainda não existam. Os uploads de imagem vão para o Vercel Blob e as URLs são gravadas no campo `gallery` do projeto.
+
+## Desenvolvimento
 
 ## Project info
 

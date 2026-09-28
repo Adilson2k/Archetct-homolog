@@ -3,16 +3,19 @@ import { useAdmin, Project, CATEGORIES } from "@/contexts/AdminContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, X, Save, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Save, ExternalLink, ImagePlus, LoaderCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const emptyProject = { title: "", category: "", year: "", image: "", description: "", location: "", gallery: "" };
 
 const AdminProjects = () => {
-  const { projects, addProject, updateProject, deleteProject } = useAdmin();
+  const { projects, addProject, updateProject, deleteProject, uploadProjectImages } = useAdmin();
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(emptyProject);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const { toast } = useToast();
 
   const parseGallery = (str: string, mainImage: string) => {
     const list = str.split("\n").map((s) => s.trim()).filter(Boolean);
@@ -20,7 +23,7 @@ const AdminProjects = () => {
     return list;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const image = form.image || "/placeholder.svg";
     const gallery = parseGallery(form.gallery, image);
     const payload = {
@@ -33,14 +36,39 @@ const AdminProjects = () => {
       gallery,
       slug: "",
     };
-    if (editing) {
-      updateProject(editing, payload);
-      setEditing(null);
-    } else if (adding) {
-      addProject(payload);
-      setAdding(false);
+    try {
+      if (editing) {
+        await updateProject(editing, payload);
+        setEditing(null);
+      } else if (adding) {
+        await addProject(payload);
+        setAdding(false);
+      }
+      setForm(emptyProject);
+    } catch {
+      toast({ title: "Não foi possível salvar", description: "Verifique a configuração e as permissões do Firebase.", variant: "destructive" });
     }
-    setForm(emptyProject);
+  };
+
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploadingImages(true);
+    try {
+      const urls = await uploadProjectImages(Array.from(files));
+      setForm((current) => {
+        const gallery = parseGallery(current.gallery, current.image);
+        return {
+          ...current,
+          image: current.image || urls[0],
+          gallery: [...new Set([...gallery, ...urls])].join("\n"),
+        };
+      });
+      toast({ title: "Imagens enviadas", description: `${urls.length} imagem(ns) adicionada(s) à galeria.` });
+    } catch {
+      toast({ title: "Falha no upload", description: "Verifique a autenticação e a configuração do Vercel Blob.", variant: "destructive" });
+    } finally {
+      setUploadingImages(false);
+    }
   };
 
   const startEdit = (project: Project) => {
@@ -123,6 +151,24 @@ const AdminProjects = () => {
               <Input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} className="h-10 border font-body" style={inputStyle} />
             </div>
             <div className="md:col-span-2">
+              <label className="font-body text-xs uppercase tracking-[0.12em] mb-1.5 block" style={labelStyle}>Enviar imagens para a galeria</label>
+              <Input
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={uploadingImages}
+                onChange={(event) => {
+                  void handleImageUpload(event.target.files);
+                  event.target.value = "";
+                }}
+                className="h-11 border font-body file:mr-3 file:h-8 file:border-0 file:bg-transparent file:text-sm file:font-medium"
+                style={inputStyle}
+              />
+              <p className="mt-1.5 font-body text-xs" style={labelStyle}>
+                {uploadingImages ? <><LoaderCircle size={13} className="mr-1 inline animate-spin" />Enviando imagens...</> : <><ImagePlus size={13} className="mr-1 inline" />Selecione várias imagens de uma vez; a primeira vira a capa se ainda não houver uma.</>}
+              </p>
+            </div>
+            <div className="md:col-span-2">
               <label className="font-body text-xs uppercase tracking-[0.12em] mb-1.5 block" style={labelStyle}>Galeria (uma URL por linha)</label>
               <textarea
                 value={form.gallery}
@@ -146,7 +192,7 @@ const AdminProjects = () => {
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button onClick={handleSave} className="gap-2 border-0 text-white font-body text-sm h-10 px-5 rounded-lg" style={{ background: "linear-gradient(135deg, hsl(38 60% 52%), hsl(38 50% 42%))" }}>
+            <Button onClick={handleSave} disabled={uploadingImages} className="gap-2 border-0 text-white font-body text-sm h-10 px-5 rounded-lg" style={{ background: "linear-gradient(135deg, hsl(38 60% 52%), hsl(38 50% 42%))" }}>
               <Save size={15} /> Salvar
             </Button>
             <Button onClick={cancel} className="gap-2 font-body text-sm h-10 px-5 rounded-lg border" style={{ background: "transparent", color: "hsl(220 8% 55%)", borderColor: "hsl(220 12% 20%)" }}>
@@ -191,7 +237,14 @@ const AdminProjects = () => {
               </button>
               {deleteConfirm === project.id ? (
                 <div className="flex gap-1">
-                  <button onClick={() => { deleteProject(project.id); setDeleteConfirm(null); }} className="px-2 h-8 rounded-lg flex items-center justify-center text-xs font-body transition-colors" style={{ background: "hsl(0 70% 55% / 0.15)", color: "hsl(0 70% 60%)" }}>
+                  <button onClick={async () => {
+                    try {
+                      await deleteProject(project.id);
+                      setDeleteConfirm(null);
+                    } catch {
+                      toast({ title: "Não foi possível excluir", description: "Verifique as permissões do Firebase.", variant: "destructive" });
+                    }
+                  }} className="px-2 h-8 rounded-lg flex items-center justify-center text-xs font-body transition-colors" style={{ background: "hsl(0 70% 55% / 0.15)", color: "hsl(0 70% 60%)" }}>
                     Sim
                   </button>
                   <button onClick={() => setDeleteConfirm(null)} className="px-2 h-8 rounded-lg flex items-center justify-center text-xs font-body" style={{ color: "hsl(220 8% 50%)" }}>

@@ -12,9 +12,13 @@ const AdminProfile = () => {
 
   useEffect(() => setForm(profile), [profile]);
 
-  const handleSave = () => {
-    updateProfile(form);
-    toast({ title: "Perfil atualizado", description: "As informações foram salvas com sucesso." });
+  const handleSave = async () => {
+    try {
+      await updateProfile(form);
+      toast({ title: "Perfil atualizado", description: "As informações foram salvas com sucesso." });
+    } catch {
+      toast({ title: "Não foi possível salvar", description: "Verifique a configuração e as permissões do Firebase.", variant: "destructive" });
+    }
   };
 
   const inputStyle = { background: "hsl(220 20% 8%)", color: "hsl(40 15% 92%)", borderColor: "hsl(220 12% 18%)" };
