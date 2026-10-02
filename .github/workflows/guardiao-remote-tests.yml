@@ -19,11 +19,7 @@ on:
         description: Suite to execute
         required: true
         type: choice
-        options: [e2e, smoke, api, build, lint, health-check]
-      health_check_url:
-        description: URL required by health-check
-        required: false
-        type: string
+        options: [build]
 
 permissions:
   contents: read
@@ -37,14 +33,13 @@ jobs:
       PROJECT_ID: ${{ github.event.client_payload.project_id || inputs.project_id }}
       CORRELATION_ID: ${{ github.event.client_payload.correlation_id || inputs.correlation_id || github.run_id }}
       AUTOMATION_TYPE: ${{ github.event.client_payload.automation_type || inputs.automation_type }}
-      HEALTH_CHECK_URL: ${{ github.event.client_payload.health_check_url || inputs.health_check_url }}
 
     steps:
       - name: Validate dispatch payload
         run: |
           test -n "$PROJECT_ID" || { echo "project_id is required"; exit 1; }
           test -n "$CORRELATION_ID" || { echo "correlation_id is required"; exit 1; }
-          case "$AUTOMATION_TYPE" in e2e|smoke|api|build|lint|health-check) ;; *) echo "Unsupported automation_type: $AUTOMATION_TYPE"; exit 1;; esac
+          case "$AUTOMATION_TYPE" in build) ;; *) echo "Unsupported automation_type for architect-s-showcase: $AUTOMATION_TYPE"; exit 1;; esac
           echo "START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Checkout monitored repository
@@ -53,7 +48,6 @@ jobs:
           ref: ${{ github.event.client_payload.branch || github.event.repository.default_branch }}
 
       - name: Setup Node.js
-        if: ${{ env.AUTOMATION_TYPE != 'health-check' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -61,29 +55,13 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        if: ${{ env.AUTOMATION_TYPE != 'health-check' }}
         run: |
           test -f package.json || { echo "This reusable workflow currently supports Node.js repositories with package.json."; exit 1; }
           test -f package-lock.json || { echo "package-lock.json is required for reproducible execution. Add it or provide a project-specific workflow."; exit 1; }
           npm ci --include=optional
 
       - name: Execute selected suite
-        if: ${{ env.AUTOMATION_TYPE != 'health-check' }}
-        run: |
-          case "$AUTOMATION_TYPE" in
-            lint) npm run lint ;;
-            build) npm run build ;;
-            api) npm run test:api ;;
-            smoke) npm run test:smoke ;;
-            e2e) npm run test:e2e ;;
-            *) echo "Unsupported automation_type: $AUTOMATION_TYPE"; exit 1 ;;
-          esac
-
-      - name: Execute health check
-        if: ${{ env.AUTOMATION_TYPE == 'health-check' }}
-        run: |
-          test -n "$HEALTH_CHECK_URL" || { echo "health_check_url is required for health-check."; exit 1; }
-          curl --fail --silent --show-error --max-time 20 "$HEALTH_CHECK_URL"
+        run: npm run build
 
       - name: Report result to Guardiao
         if: ${{ always() && secrets.GUARDIAO_API_URL != '' && secrets.GUARDIAO_CALLBACK_SECRET != '' }}
