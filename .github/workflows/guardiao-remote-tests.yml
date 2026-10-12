@@ -33,6 +33,8 @@ jobs:
       PROJECT_ID: ${{ github.event.client_payload.project_id || inputs.project_id }}
       CORRELATION_ID: ${{ github.event.client_payload.correlation_id || inputs.correlation_id || github.run_id }}
       AUTOMATION_TYPE: ${{ github.event.client_payload.automation_type || inputs.automation_type }}
+      GUARDIAO_API_URL: ${{ secrets.GUARDIAO_API_URL }}
+      GUARDIAO_CALLBACK_SECRET: ${{ secrets.GUARDIAO_CALLBACK_SECRET }}
 
     steps:
       - name: Validate dispatch payload
@@ -64,21 +66,40 @@ jobs:
         run: npm run build
 
       - name: Report result to Guardiao
-        if: ${{ always() && secrets.GUARDIAO_API_URL != '' && secrets.GUARDIAO_CALLBACK_SECRET != '' }}
+        if: ${{ always() && env.GUARDIAO_API_URL != '' && env.GUARDIAO_CALLBACK_SECRET != '' }}
         env:
-          GUARDIAO_API_URL: ${{ secrets.GUARDIAO_API_URL }}
-          GUARDIAO_CALLBACK_SECRET: ${{ secrets.GUARDIAO_CALLBACK_SECRET }}
           JOB_STATUS: ${{ job.status }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          CONCLUSION="success"
-          if [ "$JOB_STATUS" != "success" ]; then CONCLUSION="failure"; fi
+          test -n "$GUARDIAO_API_URL" || { echo "GUARDIAO_API_URL secret is required to report the result"; exit 1; }
+          test -n "$GUARDIAO_CALLBACK_SECRET" || { echo "GUARDIAO_CALLBACK_SECRET secret is required to report the result"; exit 1; }
+          case "$JOB_STATUS" in
+            success) CONCLUSION="success" ;;
+            cancelled) CONCLUSION="cancelled" ;;
+            *) CONCLUSION="failure" ;;
+          esac
           CALLBACK_TIMESTAMP=$(date +%s000)
           CALLBACK_PAYLOAD="$CALLBACK_TIMESTAMP.$PROJECT_ID.$CORRELATION_ID.$AUTOMATION_TYPE.$CONCLUSION"
           CALLBACK_SIGNATURE=$(printf '%s' "$CALLBACK_PAYLOAD" | openssl dgst -sha256 -hmac "$GUARDIAO_CALLBACK_SECRET" -hex | sed 's/^.* //')
           DURATION_SECONDS=$(( $(date +%s) - START_EPOCH ))
+          GITHUB_RUN_URL="$SERVER_URL/$REPOSITORY/actions/runs/$RUN_ID"
+          BODY=$(jq -n \
+            --arg projectId "$PROJECT_ID" \
+            --arg correlationId "$CORRELATION_ID" \
+            --arg automationType "$AUTOMATION_TYPE" \
+            --arg conclusion "$CONCLUSION" \
+            --arg message "$AUTOMATION_TYPE finished" \
+            --arg githubRunUrl "$GITHUB_RUN_URL" \
+            --arg branch "$GITHUB_REF_NAME" \
+            --arg commitSha "$GITHUB_SHA" \
+            --argjson durationSeconds "$DURATION_SECONDS" \
+            '{projectId:$projectId,correlationId:$correlationId,automationType:$automationType,conclusion:$conclusion,message:$message,githubRunUrl:$githubRunUrl,branch:$branch,commitSha:$commitSha,durationSeconds:$durationSeconds}')
           curl --fail --silent --show-error -X POST "$GUARDIAO_API_URL/api/v1/automations/callback" \
+            --max-time 20 --retry 2 --retry-all-errors \
             -H "Content-Type: application/json" \
             -H "x-guardiao-callback-secret: $GUARDIAO_CALLBACK_SECRET" \
             -H "x-guardiao-callback-timestamp: $CALLBACK_TIMESTAMP" \
             -H "x-guardiao-callback-signature: $CALLBACK_SIGNATURE" \
-            -d "{\"projectId\":\"$PROJECT_ID\",\"correlationId\":\"$CORRELATION_ID\",\"automationType\":\"$AUTOMATION_TYPE\",\"conclusion\":\"$CONCLUSION\",\"message\":\"$AUTOMATION_TYPE finished\",\"githubRunUrl\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"branch\":\"$GITHUB_REF_NAME\",\"commitSha\":\"$GITHUB_SHA\",\"durationSeconds\":$DURATION_SECONDS}"
+            -d "$BODY"
