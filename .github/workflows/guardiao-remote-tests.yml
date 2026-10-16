@@ -19,7 +19,15 @@ on:
         description: Suite to execute
         required: true
         type: choice
-        options: [build]
+        options: [e2e, smoke, api, build, lint, health-check]
+      suite_command:
+        description: Optional npm test command override
+        required: false
+        type: string
+      health_check_url:
+        description: URL required for a health-check run
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -33,6 +41,8 @@ jobs:
       PROJECT_ID: ${{ github.event.client_payload.project_id || inputs.project_id }}
       CORRELATION_ID: ${{ github.event.client_payload.correlation_id || inputs.correlation_id || github.run_id }}
       AUTOMATION_TYPE: ${{ github.event.client_payload.automation_type || inputs.automation_type }}
+      SUITE_COMMAND: ${{ github.event.client_payload.suite_command || inputs.suite_command }}
+      HEALTH_CHECK_URL: ${{ github.event.client_payload.health_check_url || inputs.health_check_url }}
       GUARDIAO_API_URL: ${{ secrets.GUARDIAO_API_URL }}
       GUARDIAO_CALLBACK_SECRET: ${{ secrets.GUARDIAO_CALLBACK_SECRET }}
 
@@ -41,7 +51,11 @@ jobs:
         run: |
           test -n "$PROJECT_ID" || { echo "project_id is required"; exit 1; }
           test -n "$CORRELATION_ID" || { echo "correlation_id is required"; exit 1; }
-          case "$AUTOMATION_TYPE" in build) ;; *) echo "Unsupported automation_type for architect-s-showcase: $AUTOMATION_TYPE"; exit 1;; esac
+          case "$AUTOMATION_TYPE" in e2e|smoke|api|build|lint|health-check) ;; *) echo "Unsupported automation_type: $AUTOMATION_TYPE"; exit 1;; esac
+          GUARDIAO_LOG_FILE="$RUNNER_TEMP/guardiao-automation.log"
+          : > "$GUARDIAO_LOG_FILE"
+          echo "GUARDIAO_LOG_FILE=$GUARDIAO_LOG_FILE" >> "$GITHUB_ENV"
+          echo "LOG_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
           echo "START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Checkout monitored repository
@@ -50,29 +64,65 @@ jobs:
           ref: ${{ github.event.client_payload.branch || github.event.repository.default_branch }}
 
       - name: Setup Node.js
+        if: ${{ env.AUTOMATION_TYPE != 'health-check' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
-        run: |
-          test -f package.json || { echo "This reusable workflow currently supports Node.js repositories with package.json."; exit 1; }
-          test -f package-lock.json || { echo "package-lock.json is required for reproducible execution. Add it or provide a project-specific workflow."; exit 1; }
-          npm ci --include=optional
-
       - name: Execute selected suite
-        run: npm run build
+        if: ${{ env.AUTOMATION_TYPE != 'health-check' }}
+        run: |
+          set +e
+          {
+            test -f package.json || { echo "This workflow requires a Node.js package.json"; exit 1; }
+            test -f package-lock.json || { echo "package-lock.json is required for reproducible execution"; exit 1; }
+            npm ci --include=optional || exit $?
+            if test -n "$SUITE_COMMAND"; then
+              if [[ "$SUITE_COMMAND" =~ ^npm[[:space:]]+(test|run[[:space:]]+[A-Za-z0-9:_-]+)([[:space:]]+[A-Za-z0-9:@/._-]+)*$ ]]; then
+                read -r -a NPM_COMMAND <<< "$SUITE_COMMAND"
+                npm "${NPM_COMMAND[@]}"
+              else
+                echo "suite_command must be a safe npm command, such as 'npm test' or 'npm run test:e2e'"
+                exit 2
+              fi
+            else
+              case "$AUTOMATION_TYPE" in
+                build) npm run build ;;
+                lint) npm run lint ;;
+                e2e) npm run test:e2e ;;
+                smoke) npm run test:smoke ;;
+                api) npm run test:api ;;
+                *) echo "Unsupported automation_type: $AUTOMATION_TYPE"; exit 1 ;;
+              esac
+            fi
+          } 2>&1 | tee "$GUARDIAO_LOG_FILE"
+          RESULT=${PIPESTATUS[0]}
+          echo "SUITE_EXIT_CODE=$RESULT" >> "$GITHUB_ENV"
+          exit "$RESULT"
+
+      - name: Execute health check
+        if: ${{ env.AUTOMATION_TYPE == 'health-check' }}
+        run: |
+          set +e
+          {
+            test -n "$HEALTH_CHECK_URL" || { echo "health_check_url is required for health-check."; exit 1; }
+            curl --fail --silent --show-error --max-time 20 "$HEALTH_CHECK_URL"
+          } 2>&1 | tee "$GUARDIAO_LOG_FILE"
+          RESULT=${PIPESTATUS[0]}
+          echo "SUITE_EXIT_CODE=$RESULT" >> "$GITHUB_ENV"
+          exit "$RESULT"
 
       - name: Report result to Guardiao
-        if: ${{ always() && env.GUARDIAO_API_URL != '' && env.GUARDIAO_CALLBACK_SECRET != '' }}
+        if: ${{ always() }}
         env:
           JOB_STATUS: ${{ job.status }}
           SERVER_URL: ${{ github.server_url }}
           REPOSITORY: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
         run: |
+          set +e
           test -n "$GUARDIAO_API_URL" || { echo "GUARDIAO_API_URL secret is required to report the result"; exit 1; }
           test -n "$GUARDIAO_CALLBACK_SECRET" || { echo "GUARDIAO_CALLBACK_SECRET secret is required to report the result"; exit 1; }
           case "$JOB_STATUS" in
@@ -81,6 +131,9 @@ jobs:
             *) CONCLUSION="failure" ;;
           esac
           CALLBACK_TIMESTAMP=$(date +%s000)
+          if test -n "$SUITE_EXIT_CODE" && test "$SUITE_EXIT_CODE" -ne 0 && test "$CONCLUSION" = success; then
+            CONCLUSION=failure
+          fi
           CALLBACK_PAYLOAD="$CALLBACK_TIMESTAMP.$PROJECT_ID.$CORRELATION_ID.$AUTOMATION_TYPE.$CONCLUSION"
           CALLBACK_SIGNATURE=$(printf '%s' "$CALLBACK_PAYLOAD" | openssl dgst -sha256 -hmac "$GUARDIAO_CALLBACK_SECRET" -hex | sed 's/^.* //')
           DURATION_SECONDS=$(( $(date +%s) - START_EPOCH ))
@@ -103,3 +156,39 @@ jobs:
             -H "x-guardiao-callback-timestamp: $CALLBACK_TIMESTAMP" \
             -H "x-guardiao-callback-signature: $CALLBACK_SIGNATURE" \
             -d "$BODY"
+          CALLBACK_RESULT=$?
+          LOGS_TRUNCATED=false
+          if test -f "$GUARDIAO_LOG_FILE"; then
+            printf '[Início UTC: %s | conclusão: %s | código de saída: %s]\n' "$LOG_STARTED_AT" "$CONCLUSION" "${SUITE_EXIT_CODE:-indisponível}" >> "$GUARDIAO_LOG_FILE"
+            LOG_BYTES=$(wc -c < "$GUARDIAO_LOG_FILE")
+            if test "$LOG_BYTES" -gt 99000; then
+              printf '[Guardiao: trecho inicial dos logs removido por limite de armazenamento]\n' > "$GUARDIAO_LOG_FILE.trimmed"
+              tail -c 98900 "$GUARDIAO_LOG_FILE" | iconv -c -f UTF-8 -t UTF-8 >> "$GUARDIAO_LOG_FILE.trimmed"
+              mv "$GUARDIAO_LOG_FILE.trimmed" "$GUARDIAO_LOG_FILE"
+              LOGS_TRUNCATED=true
+            fi
+            LOG_BODY=$(jq -n \
+              --arg projectId "$PROJECT_ID" \
+              --arg correlationId "$CORRELATION_ID" \
+              --arg automationType "$AUTOMATION_TYPE" \
+              --arg conclusion "$CONCLUSION" \
+              --arg message "$AUTOMATION_TYPE execution logs" \
+              --arg githubRunUrl "$GITHUB_RUN_URL" \
+              --arg branch "$GITHUB_REF_NAME" \
+              --arg commitSha "$GITHUB_SHA" \
+              --argjson durationSeconds "$DURATION_SECONDS" \
+              --argjson logsTruncated "$LOGS_TRUNCATED" \
+              --rawfile logs "$GUARDIAO_LOG_FILE" \
+              '{projectId:$projectId,correlationId:$correlationId,automationType:$automationType,conclusion:$conclusion,message:$message,githubRunUrl:$githubRunUrl,branch:$branch,commitSha:$commitSha,durationSeconds:$durationSeconds,logs:$logs,logsTruncated:$logsTruncated}')
+            curl --fail --silent --show-error -X POST "$GUARDIAO_API_URL/api/v1/automations/logs" \
+              --max-time 20 --retry 2 --retry-all-errors \
+              -H "Content-Type: application/json" \
+              -H "x-guardiao-callback-secret: $GUARDIAO_CALLBACK_SECRET" \
+              -H "x-guardiao-callback-timestamp: $CALLBACK_TIMESTAMP" \
+              -H "x-guardiao-callback-signature: $CALLBACK_SIGNATURE" \
+              -d "$LOG_BODY"
+            LOGS_RESULT=$?
+          else
+            LOGS_RESULT=1
+          fi
+          test "$CALLBACK_RESULT" -eq 0 && test "$LOGS_RESULT" -eq 0
